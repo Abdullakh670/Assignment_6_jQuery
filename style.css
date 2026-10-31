@@ -42,14 +42,3 @@ header p { margin: 0 0 10px; color: #555; }
 .icon { display: inline-flex; width: 16px; height: 16px; color: #222; }
 .icon svg { width: 16px; height: 16px; }
 .badge { position: absolute; top: 3px; right: 3px; background: #1d4f91; color: #fff; font-size: 8px; font-weight: 700; padding: 1px 4px; border-radius: 8px; }
-
-.sort-btn { padding: 3px 8px; font-size: 12px; }
-.sort-btn.active { background: #ffe9a8; }
-.flyer { pointer-events: none; }
-#card { display: none; position: absolute; z-index: 1000; overflow: hidden; background: #fff; border: 2px solid #222; border-radius: 12px; box-shadow: 0 12px 30px rgba(0,0,0,.35); padding: 14px; }
-.card-inner { width: 268px; }
-.card-inner h3 { margin: 0 0 8px; font-size: 20px; }
-.card-inner p { margin: 3px 0; font-size: 14px; }
-.moves { display: grid; gap: 5px; margin-top: 10px; }
-.moves button { padding: 7px; border: 1px solid #333; background: #f6f6f6; border-radius: 6px; cursor: pointer; }
-.moves button:hover { background: #ffe9a8; }

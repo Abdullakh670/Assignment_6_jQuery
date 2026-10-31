@@ -1,4 +1,3 @@
-/* Task 2 = copy of Task 1 + spotlight, guest card, move, sort. The array is changed when a guest moves. */
 /* ===== 1. DATA: the party from the picture (rooms left to right, guests left to right) ===== */
 const party = [
     { room: 'balcony', name: 'Balcony', floor: 2, guests: [
@@ -64,14 +63,12 @@ function makeCard(g) {
 }
 
 function buildPage() {
-    $('.flyer').stop(true).remove();      // a flying card from an old page must not stay
-    closeCardNow();
     $('#house').empty();
     [2, 1].forEach(function (floor) {
         const $rooms = $('<div class="rooms">');
         party.filter(r => r.floor === floor).forEach(function (r) {
             const $room = $('<div class="room">').attr({ id: r.room, 'data-name': r.name, 'data-floor': r.floor });
-            $room.append($('<div class="room-head">').append($('<h3>').text(r.name), $('<button class="sort-btn">').text('Sort by time')));
+            $room.append($('<div class="room-head">').append($('<h3>').text(r.name)));
             const $guests = $('<div class="guests">').appendTo($room);
             r.guests.forEach(g => $guests.append(makeCard(g)));
             $rooms.append($room);
@@ -118,9 +115,9 @@ const cases = [
     { id: 17, title: 'Who came first to each room?',
       run: () => $('.guests').map(function () { return $(this).children().get().sort((a, b) => minutes($(a).data('time')) - minutes($(b).data('time')))[0]; }) },
     { id: 18, title: 'Miras (AITU, blue, 21:20, phone) joins between Askar and Inkar',
-      run: () => makeCard({ name: 'Miras', color: 'blue', time: '21:20', aitu: true, items: ['phone'] }).addClass('busy').hide().insertAfter('.guest[data-name="Askar"]').fadeIn(800, function () { $(this).removeClass('busy'); }) },
+      run: () => makeCard({ name: 'Miras', color: 'blue', time: '21:20', aitu: true, items: ['phone'] }).hide().insertAfter('.guest[data-name="Askar"]').fadeIn(800) },
     { id: 19, title: 'Natasha says goodbye and goes home', jump: false,
-      run: () => $('.guest[data-name="Natasha"]').addClass('busy').fadeOut(800, function () { $(this).remove(); }) },
+      run: () => $('.guest[data-name="Natasha"]').fadeOut(800, function () { $(this).remove(); }) },
     { id: 20, title: 'Who took the cake?',
       run: () => $('#floor-1 .guest.has-crumbs').not('.has-cup').filter(function () {
           const t = minutes($(this).data('time'));
@@ -145,167 +142,8 @@ $(function () {
             buildPage();                       // always start from a fresh party
             const $found = c.run();
             showResult(c, $found);
-            spotlight($found);
             highlight(c, $found);
         }).appendTo('#controls');
     });
-    $('<button>').text('Clear').attr('id', 'clear').on('click', function () { $('.guest').fadeTo(300, 1); }).appendTo('#controls');
     buildPage();
 });
-
-
-/* =====================  TASK 2  ===================== */
-
-/* ---- 1. Spotlight: found guests stay bright, all other guests fade to 20% in 0.3 s ---- */
-function stopFx($set) {                         // stop old fades, but never touch a card that is appearing or leaving
-    $set.not('.busy').stop('fx', true);
-    return $set;
-}
-
-function spotlight($found) {
-    const $bright = $found.is('.room') ? $found.find('.guest') : $found.filter('.guest');   // room cases: guests of the room
-    stopFx($('.guest').not($bright)).fadeTo(300, 0.2);
-    stopFx($bright).fadeTo(300, 1);
-}
-
-/* ---- 2. Guest card: grows out of the photo, shrinks back into the photo ---- */
-const $card = $('<div id="card">').appendTo('body');
-const WORD = { phone: 'a phone', glasses: 'glasses', bag: 'a bag', cup: 'a cup', crumbs: 'cake crumbs' };
-let owner = null;            // name of the guest whose photo the card is attached to (null = no card)
-let closing = false;
-
-function joinWords(a) {
-    return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
-}
-
-function photoRect(name) {
-    const $img = $('.guest[data-name="' + name + '"] .avatar');
-    if (!$img.length) return null;
-    const o = $img.offset();
-    return { left: o.left, top: o.top, width: $img.outerWidth(), height: $img.outerHeight() };
-}
-
-function fillCard($g) {
-    const items = ($g.attr('data-items') || '').split(',').filter(Boolean);
-    const here = $g.closest('.room');
-    const $moves = $('<div class="moves">');
-    party.forEach(function (r) {                // one button for each OTHER room
-        if (r.room !== here.attr('id')) $moves.append($('<button>').attr('data-room', r.room).text('Move to the ' + r.name.toLowerCase()));
-    });
-    $card.empty().append($('<div class="card-inner">').append(
-        $('<h3>').text($g.attr('data-name')),
-        $('<p>').text('Came at ' + $g.attr('data-time')),
-        $('<p>').text($g.hasClass('aitu') ? 'AITU student' : 'Not an AITU student'),
-        $('<p>').text('Wears ' + $g.attr('data-color')),
-        $('<p>').text(items.length ? 'Has ' + joinWords(items.map(i => WORD[i])) : 'Has nothing with them'),
-        $('<p>').text('Now in the ' + here.attr('data-name').toLowerCase()),
-        $moves));
-}
-
-function growCard(name) {
-    const $g = $('.guest[data-name="' + name + '"]');
-    if (!$g.length) return;
-    owner = name;
-    closing = false;
-    fillCard($g);
-    $card.stop(true).css({ display: 'block', visibility: 'hidden', width: 300, height: 'auto', left: 0, top: 0, opacity: 1 });
-    const H = $card.outerHeight();              // full height of the card
-    const target = { left: $(window).scrollLeft() + ($(window).width() - 300) / 2, top: $(window).scrollTop() + ($(window).height() - H) / 2, width: 300, height: H };
-    const p = photoRect(name);
-    $card.css({ visibility: 'visible', left: p.left, top: p.top, width: p.width, height: p.height }).animate(target, 350);
-}
-
-function shrinkCard(done) {
-    const r = photoRect(owner);
-    closing = true;
-    const finish = function () { $card.hide(); owner = null; closing = false; if (done) done(); };
-    if (r) $card.stop(true).animate(r, 250, finish);
-    else $card.stop(true).fadeOut(150, finish);
-}
-
-function openCard($g) {                         // only one card: the old one shrinks, then the new one grows
-    const name = $g.attr('data-name');
-    if (owner === name && !closing) return;
-    if (owner && owner !== name) shrinkCard(function () { growCard(name); });
-    else growCard(name);
-}
-
-function closeCard() { if (owner) shrinkCard(); }
-function closeCardNow() { $card.stop(true).hide(); owner = null; closing = false; }
-
-$(document).on('click', '.guest', function () { openCard($(this)); });
-$(document).on('keydown', function (e) { if (e.key === 'Escape') closeCard(); });
-$(document).on('click', function (e) { if (!$(e.target).closest('.guest, #card').length) closeCard(); });
-
-/* ---- 3. Move: the card flies to the new room, the old place closes, the new place opens ---- */
-const GAP_OFF = { width: 0, marginLeft: 0, marginRight: 0, paddingLeft: 0, paddingRight: 0 };
-
-function moveGuest(name, toId) {
-    const $src = $('.guest[data-name="' + name + '"]').not('.leaving');
-    if (!$src.length || $src.closest('.room').attr('id') === toId) return;
-    const g = { name: name, color: $src.attr('data-color'), time: $src.attr('data-time'), aitu: $src.hasClass('aitu'),
-                items: ($src.attr('data-items') || '').split(',').filter(Boolean) };
-
-    // the array changes first, so every case and every rebuild sees the guest in the new room
-    const fromRoom = party.find(r => r.guests.some(x => x.name === name));
-    const toRoom = party.find(r => r.room === toId);
-    if (fromRoom) {
-        fromRoom.guests.splice(fromRoom.guests.findIndex(x => x.name === name), 1);
-        toRoom.guests.push(g);
-    }
-
-    const op = $src.css('opacity');
-    $src.stop('fx', true);
-    const start = $src.offset();
-
-    // new card at the end of the new room: measure its final place, then close its gap
-    const $real = makeCard(g).css('visibility', 'hidden').appendTo('#' + toId + ' .guests');
-    const end = $real.offset();
-    const full = {};
-    ['width', 'marginLeft', 'marginRight', 'paddingLeft', 'paddingRight'].forEach(p => full[p] = $real.css(p));
-    $real.css($.extend({ overflow: 'hidden', opacity: op }, GAP_OFF))
-         .animate(full, { duration: 700, queue: 'gap' }).dequeue('gap');           // the new place opens slowly
-
-    // the old place closes slowly
-    $src.addClass('leaving').css({ visibility: 'hidden', overflow: 'hidden' })
-        .animate(GAP_OFF, { duration: 700, queue: 'gap', complete: function () { $(this).remove(); } }).dequeue('gap');
-
-    // a copy of the card flies across the house
-    const $fly = $src.clone().addClass('flyer').css({ position: 'absolute', left: start.left, top: start.top, margin: 0, width: $src.outerWidth(),
-        height: $src.outerHeight(), opacity: op, zIndex: 900, visibility: 'visible' }).appendTo('body');
-    $fly.animate({ left: end.left, top: end.top }, 700, function () {
-        $real.stop('gap', true, true).removeAttr('style').css('opacity', op);
-        $fly.remove();
-    });
-}
-
-$(document).on('click', '#card .moves button', function () {
-    const name = owner;
-    closeCard();
-    moveGuest(name, $(this).attr('data-room'));
-});
-
-/* ---- 4. Sort by time: cards slide to their new places; click again = back to the picture order ---- */
-function sortRoom($room) {
-    const $list = $room.find('.guests');
-    const els = $list.children('.guest').not('.leaving').get();
-    const sorted = !$room.data('sorted');
-    $room.data('sorted', sorted);
-    $room.find('.sort-btn').toggleClass('active', sorted);
-    if (sorted) $room.data('picture', els.map(e => e.getAttribute('data-name')));        // remember the picture order
-    const picture = $room.data('picture') || [];
-    const rank = e => { const i = picture.indexOf(e.getAttribute('data-name')); return i < 0 ? 1000 : i; };
-
-    $(els).stop('slide', true);                                                          // stop old slides, keep the cards where they are now
-    const first = new Map(els.map(e => [e, $(e).offset()]));                              // where every card is right now
-    els.sort(sorted ? (a, b) => minutes(a.dataset.time) - minutes(b.dataset.time) : (a, b) => rank(a) - rank(b));
-    $(els).css({ left: 0, top: 0 });
-    $list.append(els);                                                                    // new order in the DOM
-    els.forEach(function (e) {                                                            // put every card back where it was, then slide it
-        const now = $(e).offset(), was = first.get(e);
-        $(e).css({ left: was.left - now.left, top: was.top - now.top })
-            .animate({ left: 0, top: 0 }, { duration: 700, queue: 'slide' }).dequeue('slide');
-    });
-}
-
-$(document).on('click', '.sort-btn', function () { sortRoom($(this).closest('.room')); });
